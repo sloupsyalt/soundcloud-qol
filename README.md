@@ -25,6 +25,8 @@ Black & white UI that sits in the player chrome.
 4. Select this folder (`soundcloud-qol`)
 5. After updates, hit **Reload** on the extension card
 
+UI design tokens and component notes: [docs/DESIGN.md](docs/DESIGN.md).
+
 ## Discord presence
 
 Discord rejects WebSocket connections from browser extensions (`Invalid Origin`). A tiny local bridge uses Discord’s IPC instead.

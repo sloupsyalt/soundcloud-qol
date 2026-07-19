@@ -91,6 +91,8 @@
     loop: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 3l3 3-3 3M7 21l-3-3 3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 6H9a5 5 0 000 10h1M4 18h11a5 5 0 000-10h-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     mute: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4h3l4 3V7L7 10H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
     unmute: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4h3l4 3V7L7 10H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 8.5a4.5 4.5 0 010 7M18.5 6a8 8 0 010 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    copy: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M6 16H5a1.5 1.5 0 01-1.5-1.5V5A1.5 1.5 0 015 3.5h9.5A1.5 1.5 0 0116 5v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    more: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="18" cy="12" r="1.6" fill="currentColor"/></svg>`,
   };
 
   let locale = "en";
@@ -379,6 +381,7 @@
         title: track.title,
         artist: track.artist,
         url: track.trackUrl,
+        artworkUrl: track.artworkUrl || "",
         at: Date.now(),
       },
     });
@@ -576,8 +579,10 @@
 
   async function copyTrack(withTimestamp = false) {
     const track = readTrack();
-    if (!track) return;
+    if (!track) return null;
     let url = track.trackUrl || location.href;
+    const s = Math.max(0, Math.floor(track.currentSeconds || 0));
+    const clock = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     if (withTimestamp && track.currentSeconds > 0) {
       url = `${url.split("#")[0]}#t=${Math.floor(track.currentSeconds)}`;
     }
@@ -585,8 +590,10 @@
     try {
       await navigator.clipboard.writeText(text);
       toast(withTimestamp ? t.copiedStamp : t.copied);
+      return { ok: true, stamp: clock };
     } catch {
       toast(t.copyFail);
+      return { ok: false };
     }
   }
 
@@ -601,19 +608,23 @@
       host.appendChild(group);
     }
 
-    if (!group.querySelector(".scqol-timer-btn")) {
+    const makeBtn = (cls, html, title, onClick) => {
+      if (group.querySelector(`.${cls}`)) return;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "scqol-timer-btn";
-      btn.innerHTML = ICONS.timer;
-      btn.title = t.sleepTimer;
+      btn.className = cls;
+      btn.innerHTML = html;
+      btn.title = title;
+      btn.setAttribute("aria-label", title);
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        openTimerPanel();
+        onClick();
       });
       group.appendChild(btn);
-    }
+    };
+
+    makeBtn("scqol-timer-btn", ICONS.timer, t.sleepTimer, () => openTimerPanel());
 
     if (!group.querySelector(".scqol-speed-btn")) {
       const btn = document.createElement("button");
@@ -621,6 +632,7 @@
       btn.className = "scqol-speed-btn";
       btn.textContent = `${playbackRate}x`;
       btn.title = t.speed;
+      btn.setAttribute("aria-label", t.speed);
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -629,44 +641,24 @@
       group.appendChild(btn);
     }
 
-    if (!group.querySelector(".scqol-focus-btn")) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "scqol-focus-btn";
-      btn.innerHTML = ICONS.focus;
-      btn.title = "Focus";
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setFocusMode(!focusMode);
-      });
-      group.appendChild(btn);
-    }
+    makeBtn("scqol-focus-btn", ICONS.focus, "Focus", () => setFocusMode(!focusMode));
+    makeBtn("scqol-copy-btn", ICONS.copy, "Copy timestamp", () => copyTrack(true));
+    makeBtn("scqol-loop-btn", ICONS.loop, "Loop", () => setLoopMode(!loopMode));
+    makeBtn("scqol-mute-btn", muted ? ICONS.mute : ICONS.unmute, muted ? t.muteOn : t.muteOff, () =>
+      setMuted(!muted)
+    );
 
-    if (!group.querySelector(".scqol-loop-btn")) {
+    if (!group.querySelector(".scqol-more-btn")) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "scqol-loop-btn";
-      btn.innerHTML = ICONS.loop;
-      btn.title = "Loop";
+      btn.className = "scqol-more-btn";
+      btn.innerHTML = ICONS.more;
+      btn.title = "More QoL";
+      btn.setAttribute("aria-label", "More QoL controls");
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setLoopMode(!loopMode);
-      });
-      group.appendChild(btn);
-    }
-
-    if (!group.querySelector(".scqol-mute-btn")) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "scqol-mute-btn";
-      btn.innerHTML = muted ? ICONS.mute : ICONS.unmute;
-      btn.title = muted ? t.muteOn : t.muteOff;
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setMuted(!muted);
+        group.classList.toggle("is-expanded");
       });
       group.appendChild(btn);
     }
@@ -847,7 +839,7 @@
   });
 
   try {
-    chrome.runtime.onMessage.addListener((message) => {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (dead || !extensionOk()) {
         teardown();
         return;
@@ -855,8 +847,15 @@
       if (message?.type === "SLEEP_TIMER_CHANGED") {
         timerEndAt = message.endAt;
         if (timerEndAt) stopAfterTrack = false;
+        if (message.stopAfter) {
+          stopAfterTrack = true;
+          stopAfterKey = readTrack()?.identity || "";
+        }
         updateTimerButton();
         if (timerEndAt) startTick();
+      }
+      if (message?.type === "STOP_AFTER_ENABLED") {
+        enableStopAfterTrack();
       }
       if (message?.type === "SLEEP_TIMER_FIRE") {
         timerEndAt = null;
@@ -867,6 +866,44 @@
       if (message?.type === "SETTINGS_CHANGED" && message.settings) {
         if (message.settings.locale) applyLocale(message.settings.locale);
         updateTimerButton();
+      }
+      if (message?.type === "POPUP_COMMAND") {
+        (async () => {
+          const action = message.action;
+          const payload = message.payload || {};
+          if (action === "setSpeed") {
+            setPlaybackRate(Number(payload.rate) || 1);
+            sendResponse({ ok: true });
+            return;
+          }
+          if (action === "setFocus") {
+            setFocusMode(Boolean(payload.on));
+            sendResponse({ ok: true });
+            return;
+          }
+          if (action === "copyTimestamp") {
+            const res = await copyTrack(true);
+            sendResponse(res || { ok: false });
+            return;
+          }
+          if (action === "stopAfter") {
+            await enableStopAfterTrack();
+            sendResponse({ ok: true });
+            return;
+          }
+          if (action === "clearTimer" || action === "syncTimer") {
+            send("GET_SLEEP_TIMER").then((res) => {
+              timerEndAt = res?.endAt || null;
+              stopAfterTrack = Boolean(res?.stopAfter);
+              updateTimerButton();
+              if (timerEndAt) startTick();
+            });
+            sendResponse({ ok: true });
+            return;
+          }
+          sendResponse({ ok: false });
+        })();
+        return true;
       }
     });
   } catch {

@@ -4,38 +4,182 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SoundCloud QoL</title>
+    <link rel="stylesheet" href="../shared/tokens.css" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <header>
-      <p class="eyebrow">QoL</p>
-      <h1>SoundCloud</h1>
+    <header class="header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M3 14.5c0-.3.2-.5.5-.5h1c.3 0 .5.2.5.5v3c0 .3-.2.5-.5.5h-1a.5.5 0 01-.5-.5v-3zm3.5-3c0-.3.2-.5.5-.5h1c.3 0 .5.2.5.5v6c0 .3-.2.5-.5.5h-1a.5.5 0 01-.5-.5v-6zm3.5-2c0-.3.2-.5.5-.5h1c.3 0 .5.2.5.5v8c0 .3-.2.5-.5.5h-1a.5.5 0 01-.5-.5v-8zm3.2-3.2A4.5 4.5 0 0121 10.5v6.2c0 .7-.5 1.3-1.2 1.3H14.5a.5.5 0 01-.5-.5v-9c0-1.7 1-3.2 2.7-3.7z" />
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1>SoundCloud QoL</h1>
+          <span class="version" id="version">v—</span>
+        </div>
+      </div>
+      <button type="button" class="icon-btn" id="open-settings" title="Settings" aria-label="Open settings">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 3.5v2.2M12 18.3v2.2M4.9 7.1l1.6 1.6M17.5 15.3l1.6 1.6M3.5 12h2.2M18.3 12h2.2M4.9 16.9l1.6-1.6M17.5 8.7l1.6-1.6" stroke-linecap="round" />
+        </svg>
+      </button>
     </header>
 
-    <dl class="stats">
-      <div>
-        <dt>Timer</dt>
-        <dd id="timer-status">Off</dd>
+    <section class="now" id="now-playing" aria-live="polite">
+      <div class="now-empty" id="now-empty">
+        <p>Play something on SoundCloud to activate controls.</p>
       </div>
-      <div>
-        <dt>Discord</dt>
-        <dd id="discord-status">…</dd>
+      <div class="now-active" id="now-active" hidden>
+        <div class="art" id="now-art" aria-hidden="true"></div>
+        <div class="now-meta">
+          <div class="now-title-row">
+            <p class="now-title" id="now-title">—</p>
+            <span class="live-dot" id="live-dot" title="Track detected" aria-label="Track detected"></span>
+          </div>
+          <p class="now-artist" id="now-artist">—</p>
+          <div class="now-time">
+            <span id="now-current">0:00</span>
+            <span class="sep">/</span>
+            <span id="now-duration">0:00</span>
+          </div>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="now-progress-wrap">
+            <div class="progress-bar" id="now-progress"></div>
+          </div>
+        </div>
       </div>
-    </dl>
+    </section>
 
-    <section class="recent">
-      <h2>Recent</h2>
-      <ul id="recent-list">
+    <section class="block" aria-labelledby="timer-heading">
+      <div class="block-head">
+        <h2 id="timer-heading">Sleep timer</h2>
+        <span class="block-status" id="timer-label">Off</span>
+      </div>
+      <div class="chip-row" id="timer-presets" role="group" aria-label="Timer presets">
+        <button type="button" class="chip" data-minutes="15">15</button>
+        <button type="button" class="chip" data-minutes="30">30</button>
+        <button type="button" class="chip" data-minutes="45">45</button>
+        <button type="button" class="chip" data-minutes="60">60</button>
+        <button type="button" class="chip" data-stop-after="1">End</button>
+        <button type="button" class="chip" id="timer-custom">Custom</button>
+      </div>
+      <div class="timer-active" id="timer-active" hidden>
+        <div class="timer-countdown">
+          <span id="timer-remaining">0:00</span>
+          <div class="progress thin" id="timer-progress-wrap">
+            <div class="progress-bar accent" id="timer-progress"></div>
+          </div>
+        </div>
+        <button type="button" class="btn-cancel" id="timer-cancel">Cancel</button>
+      </div>
+      <div class="custom-row" id="custom-row" hidden>
+        <input type="number" id="custom-minutes" min="1" max="600" placeholder="Minutes" aria-label="Custom minutes" />
+        <button type="button" class="btn-primary sm" id="custom-set">Set</button>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="speed-heading">
+      <div class="block-head">
+        <h2 id="speed-heading">Speed</h2>
+      </div>
+      <div class="seg" role="group" aria-label="Playback speed" id="speed-presets">
+        <button type="button" class="seg-btn" data-rate="0.75">0.75×</button>
+        <button type="button" class="seg-btn" data-rate="1">1×</button>
+        <button type="button" class="seg-btn" data-rate="1.25">1.25×</button>
+        <button type="button" class="seg-btn" data-rate="1.5">1.5×</button>
+        <button type="button" class="seg-btn" data-rate="2">2×</button>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="actions-heading">
+      <div class="block-head">
+        <h2 id="actions-heading">Quick actions</h2>
+        <span class="inline-feedback" id="copy-feedback" hidden></span>
+      </div>
+      <div class="action-grid">
+        <button type="button" class="action" id="toggle-focus" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>Focus</span>
+        </button>
+        <button type="button" class="action" id="copy-stamp">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="8" y="8" width="11" height="11" rx="1.5" />
+            <path d="M6 16H5a1.5 1.5 0 01-1.5-1.5V5A1.5 1.5 0 015 3.5h9.5A1.5 1.5 0 0116 5v1" stroke-linecap="round" />
+          </svg>
+          <span>Copy time</span>
+        </button>
+        <button type="button" class="action" id="show-shortcuts">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3.5" y="6.5" width="17" height="11" rx="2" />
+            <path d="M7 15h10M7 10h.01M10.5 10h.01M14 10h.01M17.5 10h.01" stroke-linecap="round" />
+          </svg>
+          <span>Shortcuts</span>
+        </button>
+        <button type="button" class="action" id="open-settings-2">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 3.5v2.2M12 18.3v2.2M4.9 7.1l1.6 1.6M17.5 15.3l1.6 1.6M3.5 12h2.2M18.3 12h2.2M4.9 16.9l1.6-1.6M17.5 8.7l1.6-1.6" stroke-linecap="round" />
+          </svg>
+          <span>Settings</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Preserved Discord RPC block — do not restyle internals -->
+    <section class="rpc-legacy" aria-labelledby="rpc-heading">
+      <h2 id="rpc-heading" class="rpc-legacy-title">Discord</h2>
+      <dl class="stats">
+        <div>
+          <dt>Discord</dt>
+          <dd id="discord-status">…</dd>
+        </div>
+      </dl>
+      <div class="actions">
+        <button type="button" id="reconnect">Reconnect Discord</button>
+      </div>
+    </section>
+
+    <section class="block recent-block" aria-labelledby="recent-heading">
+      <div class="block-head">
+        <h2 id="recent-heading">Recently played</h2>
+        <button type="button" class="text-btn" id="clear-recent">Clear history</button>
+      </div>
+      <ul class="recent-list" id="recent-list">
         <li class="empty">Nothing yet</li>
       </ul>
     </section>
 
-    <div class="actions">
-      <button type="button" id="reconnect">Reconnect Discord</button>
-      <button type="button" id="options" class="ghost">Settings</button>
-    </div>
+    <footer class="footer">
+      <span id="ext-status">Ready</span>
+      <a href="https://github.com/sloupsyalt/soundcloud-qol" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <span id="footer-version">—</span>
+    </footer>
 
-    <p class="hint">L loop · M mute · C copy · <kbd>?</kbd> help</p>
+    <dialog class="sheet" id="shortcuts-sheet">
+      <div class="sheet-inner">
+        <div class="block-head">
+          <h2>Shortcuts</h2>
+          <button type="button" class="text-btn" id="close-shortcuts">Close</button>
+        </div>
+        <ul class="shortcut-list">
+          <li><span>Sleep timer</span><kbd>T</kbd></li>
+          <li><span>Stop after track</span><kbd>E</kbd></li>
+          <li><span>Focus</span><kbd>F</kbd></li>
+          <li><span>Loop</span><kbd>L</kbd></li>
+          <li><span>Mute</span><kbd>M</kbd></li>
+          <li><span>Copy track</span><kbd>C</kbd></li>
+          <li><span>Copy + timestamp</span><kbd>⇧C</kbd></li>
+          <li><span>Seek ±10s</span><kbd>[ ]</kbd></li>
+          <li><span>Speed</span><kbd>- =</kbd></li>
+          <li><span>Help on page</span><kbd>?</kbd></li>
+        </ul>
+      </div>
+    </dialog>
+
     <script src="popup.js" type="module"></script>
   </body>
 </html>

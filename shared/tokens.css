@@ -1,0 +1,59 @@
+/* SoundCloud QoL — design tokens */
+:root {
+  /* Surfaces */
+  --qol-bg: #121212;
+  --qol-surface: #1a1a1a;
+  --qol-surface-2: #222;
+  --qol-elevated: #2a2a2a;
+  --qol-ink: #f5f2ef;
+  --qol-ink-muted: #9a9590;
+  --qol-ink-faint: #6e6a66;
+  --qol-line: #2e2e2e;
+  --qol-line-strong: #3d3d3d;
+
+  /* Accent (SoundCloud-inspired, used sparingly) */
+  --qol-accent: #ff5500;
+  --qol-accent-hover: #ff6a1a;
+  --qol-accent-soft: rgba(255, 85, 0, 0.16);
+  --qol-accent-text: #ff7a33;
+
+  /* Status */
+  --qol-success: #3dcc8c;
+  --qol-success-soft: rgba(61, 204, 140, 0.14);
+  --qol-warn: #e6a23c;
+  --qol-warn-soft: rgba(230, 162, 60, 0.14);
+  --qol-danger: #e85d5d;
+  --qol-danger-soft: rgba(232, 93, 93, 0.14);
+
+  /* Geometry */
+  --qol-radius-sm: 3px;
+  --qol-radius: 5px;
+  --qol-radius-lg: 8px;
+  --qol-space-1: 4px;
+  --qol-space-2: 8px;
+  --qol-space-3: 12px;
+  --qol-space-4: 16px;
+  --qol-space-5: 20px;
+  --qol-hit: 32px;
+
+  /* Type — system stack, no webfonts */
+  --qol-font: "Lucida Grande", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --qol-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --qol-fs-xs: 10px;
+  --qol-fs-sm: 11px;
+  --qol-fs: 13px;
+  --qol-fs-md: 14px;
+  --qol-fs-lg: 16px;
+  --qol-fs-xl: 18px;
+
+  /* Motion */
+  --qol-ease: 0.14s ease;
+  --qol-ease-out: 0.18s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --qol-ease: 0.01ms;
+    --qol-ease-out: 0.01ms;
+  }
+}

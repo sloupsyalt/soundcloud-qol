@@ -8,15 +8,35 @@ import {
   setBridgeToken,
 } from "./discord-rpc.js";
 
-const DEFAULTS = {
+const SYNC_DEFAULTS = {
   discordEnabled: true,
   discordClientId: "",
   locale: "en",
+  defaultPlaybackRate: 1,
+  timerPresets: [15, 30, 45, 60],
+  timerEndBehavior: "pause",
+  recentHistoryEnabled: true,
+  density: "compact",
+  reducedMotion: false,
+};
+
+const LOCAL_DEFAULTS = {
+  focusMode: false,
+  playbackRate: 1,
+  loopMode: false,
+  muted: false,
+  stopAfterTrack: false,
+  sleepTimerEndAt: null,
+  sleepTimerStartedAt: null,
+  sleepTimerDurationMs: null,
+  nowPlaying: null,
+  recentTracks: [],
+  bridgeToken: "",
 };
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const current = await chrome.storage.sync.get(DEFAULTS);
-  await chrome.storage.sync.set({ ...DEFAULTS, ...current });
+  const current = await chrome.storage.sync.get(SYNC_DEFAULTS);
+  await chrome.storage.sync.set({ ...SYNC_DEFAULTS, ...current });
   await reinjectContentScripts();
 });
 
@@ -55,7 +75,7 @@ async function getDiscordSettings() {
     discordClientId: null,
     bridgeToken: "",
   });
-  const sync = await chrome.storage.sync.get(DEFAULTS);
+  const sync = await chrome.storage.sync.get(SYNC_DEFAULTS);
   const enabled =
     local.discordEnabled == null ? Boolean(sync.discordEnabled) : Boolean(local.discordEnabled);
   const clientId = String(
@@ -80,6 +100,10 @@ async function getDiscordSettings() {
   };
 }
 
+async function getLocalPrefs() {
+  return chrome.storage.local.get(LOCAL_DEFAULTS);
+}
+
 async function syncDiscordConnection() {
   const { enabled, clientId, bridgeToken } = await getDiscordSettings();
   if (!enabled) {
@@ -89,12 +113,64 @@ async function syncDiscordConnection() {
   return connect(clientId, bridgeToken);
 }
 
+async function setSleepTimer(endAt, meta = {}) {
+  const startedAt = endAt ? Date.now() : null;
+  const durationMs = endAt ? Math.max(0, endAt - Date.now()) : null;
+  await chrome.storage.local.set({
+    sleepTimerEndAt: endAt ?? null,
+    sleepTimerStartedAt: meta.startedAt ?? startedAt,
+    sleepTimerDurationMs: meta.durationMs ?? durationMs,
+    stopAfterTrack: Boolean(meta.stopAfter),
+  });
+  if (endAt) {
+    chrome.alarms.create("sleep-timer", { when: Date.now() + Math.max(0, endAt - Date.now()) });
+  } else {
+    chrome.alarms.clear("sleep-timer");
+  }
+  broadcast({
+    type: "SLEEP_TIMER_CHANGED",
+    endAt: endAt ?? null,
+    stopAfter: Boolean(meta.stopAfter),
+  });
+  return { endAt: endAt ?? null, stopAfter: Boolean(meta.stopAfter) };
+}
+
+async function sendToActiveSoundCloud(message) {
+  const tabs = await chrome.tabs.query({
+    url: ["https://soundcloud.com/*", "https://*.soundcloud.com/*"],
+    active: true,
+    currentWindow: true,
+  });
+  let tab = tabs[0];
+  if (!tab) {
+    const all = await chrome.tabs.query({
+      url: ["https://soundcloud.com/*", "https://*.soundcloud.com/*"],
+    });
+    tab = all[0];
+  }
+  if (!tab?.id) return { ok: false, error: "No SoundCloud tab" };
+  try {
+    const res = await chrome.tabs.sendMessage(tab.id, message);
+    return res || { ok: true };
+  } catch {
+    return { ok: false, error: "SoundCloud tab not ready" };
+  }
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync" && area !== "local") return;
   if (changes.discordEnabled || changes.discordClientId || changes.bridgeToken) {
     syncDiscordConnection();
   }
-  if (area === "sync" && (changes.locale || changes.discordEnabled || changes.discordClientId)) {
+  if (
+    area === "sync" &&
+    (changes.locale ||
+      changes.discordEnabled ||
+      changes.discordClientId ||
+      changes.defaultPlaybackRate ||
+      changes.density ||
+      changes.reducedMotion)
+  ) {
     getDiscordSettings().then((settings) => {
       broadcast({ type: "SETTINGS_CHANGED", settings: settings.raw });
     });
@@ -105,11 +181,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     switch (message?.type) {
       case "TRACK_UPDATE": {
+        const track = message.track || null;
+        await chrome.storage.local.set({
+          nowPlaying: track
+            ? {
+                title: track.title,
+                artist: track.artist,
+                artworkUrl: track.artworkUrl || "",
+                trackUrl: track.trackUrl || "",
+                currentSeconds: track.currentSeconds || 0,
+                durationSeconds: track.durationSeconds || 0,
+                isPlaying: track.isPlaying === true,
+                updatedAt: Date.now(),
+              }
+            : null,
+        });
         const { enabled, clientId, bridgeToken } = await getDiscordSettings();
         if (enabled) {
           await connect(clientId, bridgeToken);
           const ok = await setActivity(message.track);
-          sendResponse({ ok, discord: getStatus(), track: message.track?.title || null });
+          sendResponse({ ok, discord: getStatus(), track: track?.title || null });
         } else {
           await clearActivity();
           sendResponse({ ok: true, discord: getStatus() });
@@ -117,6 +208,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         break;
       }
       case "TRACK_CLEAR": {
+        await chrome.storage.local.set({ nowPlaying: null });
         const { enabled } = await getDiscordSettings();
         if (enabled) await clearActivity();
         sendResponse({ ok: true, discord: getStatus() });
@@ -142,33 +234,89 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       case "GET_SETTINGS": {
         const settings = (await getDiscordSettings()).raw;
+        const local = await getLocalPrefs();
         if (settings.discordEnabled) {
           await connect(String(settings.discordClientId || "").trim(), settings.bridgeToken);
         }
-        // Never echo the raw token to popup/options responses when not needed —
-        // options reads it from storage directly; still include for the options page form.
-        sendResponse({ ok: true, settings, discord: getStatus() });
+        sendResponse({
+          ok: true,
+          settings: {
+            ...settings,
+            focusMode: Boolean(local.focusMode),
+            playbackRate: Number(local.playbackRate) || settings.defaultPlaybackRate || 1,
+          },
+          discord: getStatus(),
+        });
+        break;
+      }
+      case "GET_POPUP_STATE": {
+        const settings = (await getDiscordSettings()).raw;
+        const local = await getLocalPrefs();
+        if (settings.discordEnabled && settings.hasBridgeToken) {
+          await connect(String(settings.discordClientId || "").trim(), settings.bridgeToken);
+        }
+        sendResponse({
+          ok: true,
+          track: local.nowPlaying,
+          timer: {
+            endAt: local.sleepTimerEndAt,
+            startedAt: local.sleepTimerStartedAt,
+            durationMs: local.sleepTimerDurationMs,
+            stopAfter: Boolean(local.stopAfterTrack),
+          },
+          recentTracks: settings.recentHistoryEnabled === false ? [] : local.recentTracks || [],
+          settings: {
+            ...settings,
+            focusMode: Boolean(local.focusMode),
+            playbackRate: Number(local.playbackRate) || settings.defaultPlaybackRate || 1,
+            recentHistoryEnabled: settings.recentHistoryEnabled !== false,
+          },
+          discord: getStatus(),
+          version: chrome.runtime.getManifest().version,
+        });
         break;
       }
       case "SET_SLEEP_TIMER": {
         const endAt = message.endAt ?? null;
-        await chrome.storage.local.set({ sleepTimerEndAt: endAt });
-        if (endAt) {
-          const delay = Math.max(0, endAt - Date.now());
-          chrome.alarms.create("sleep-timer", { when: Date.now() + delay });
-        } else {
-          chrome.alarms.clear("sleep-timer");
-        }
-        broadcast({ type: "SLEEP_TIMER_CHANGED", endAt });
-        sendResponse({ ok: true, endAt });
+        const result = await setSleepTimer(endAt, {
+          stopAfter: false,
+          durationMs: endAt ? Math.max(0, endAt - Date.now()) : null,
+        });
+        sendResponse({ ok: true, ...result });
+        break;
+      }
+      case "SET_STOP_AFTER": {
+        await setSleepTimer(null, { stopAfter: true });
+        broadcast({ type: "STOP_AFTER_ENABLED" });
+        sendResponse({ ok: true, stopAfter: true });
         break;
       }
       case "GET_SLEEP_TIMER": {
-        const { sleepTimerEndAt } = await chrome.storage.local.get({ sleepTimerEndAt: null });
-        sendResponse({ ok: true, endAt: sleepTimerEndAt });
+        const local = await getLocalPrefs();
+        sendResponse({
+          ok: true,
+          endAt: local.sleepTimerEndAt,
+          stopAfter: Boolean(local.stopAfterTrack),
+          startedAt: local.sleepTimerStartedAt,
+          durationMs: local.sleepTimerDurationMs,
+        });
+        break;
+      }
+      case "POPUP_COMMAND": {
+        const res = await sendToActiveSoundCloud({
+          type: "POPUP_COMMAND",
+          action: message.action,
+          payload: message.payload || {},
+        });
+        sendResponse(res);
         break;
       }
       case "RECENT_TRACK": {
+        const sync = await chrome.storage.sync.get(SYNC_DEFAULTS);
+        if (sync.recentHistoryEnabled === false) {
+          sendResponse({ ok: true, recentTracks: [] });
+          break;
+        }
         const item = message.item;
         if (!item?.title) {
           sendResponse({ ok: false });
@@ -180,11 +328,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             title: String(item.title).slice(0, 200),
             artist: String(item.artist || "").slice(0, 200),
             url: String(item.url || "").slice(0, 500),
+            artworkUrl: String(item.artworkUrl || "").slice(0, 500),
             at: Number(item.at) || Date.now(),
           },
-          ...recentTracks.filter(
-            (r) => !(r.title === item.title && r.artist === item.artist)
-          ),
+          ...recentTracks.filter((r) => !(r.title === item.title && r.artist === item.artist)),
         ].slice(0, 12);
         await chrome.storage.local.set({ recentTracks: next });
         sendResponse({ ok: true, recentTracks: next });
@@ -193,6 +340,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       case "GET_RECENT": {
         const { recentTracks = [] } = await chrome.storage.local.get({ recentTracks: [] });
         sendResponse({ ok: true, recentTracks });
+        break;
+      }
+      case "CLEAR_RECENT": {
+        await chrome.storage.local.set({ recentTracks: [] });
+        sendResponse({ ok: true, recentTracks: [] });
+        break;
+      }
+      case "CLEAR_LOCAL_DATA": {
+        await chrome.storage.local.set({
+          recentTracks: [],
+          nowPlaying: null,
+          sleepTimerEndAt: null,
+          sleepTimerStartedAt: null,
+          sleepTimerDurationMs: null,
+          stopAfterTrack: false,
+        });
+        chrome.alarms.clear("sleep-timer");
+        sendResponse({ ok: true });
         break;
       }
       default:
@@ -206,7 +371,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "sleep-timer") return;
-  await chrome.storage.local.set({ sleepTimerEndAt: null });
+  await chrome.storage.local.set({
+    sleepTimerEndAt: null,
+    sleepTimerStartedAt: null,
+    sleepTimerDurationMs: null,
+  });
   broadcast({ type: "SLEEP_TIMER_FIRE" });
 });
 
