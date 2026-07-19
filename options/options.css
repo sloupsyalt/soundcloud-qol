@@ -1,0 +1,136 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0a0a0a;
+  color: #f2f2f2;
+  font: 15px/1.5 "Interstate", "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+main {
+  width: min(640px, calc(100% - 40px));
+  margin: 48px auto 72px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.lede {
+  margin: 0 0 28px;
+  max-width: 36rem;
+  color: #888;
+  font-size: 15px;
+}
+
+section {
+  padding: 22px 0;
+  border-top: 1px solid #222;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #aaa;
+}
+
+.note,
+.steps,
+.feature-list {
+  color: #888;
+  font-size: 14px;
+}
+
+.note { margin: 0 0 12px; }
+
+.note code,
+.feature-list code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #171717;
+  border: 1px solid #2a2a2a;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.steps {
+  margin: 0 0 16px;
+  padding-left: 18px;
+}
+
+.toggle,
+.field {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.toggle { align-items: center; }
+.field { flex-direction: column; }
+.field span { color: #777; font-size: 13px; }
+
+input[type="text"],
+select {
+  width: 100%;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 11px 12px;
+  background: #111;
+  color: #f2f2f2;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+input[type="text"]:focus,
+select:focus {
+  border-color: #666;
+}
+
+.status {
+  min-height: 1.2em;
+  margin: 0 0 12px;
+  color: #777;
+  font-size: 13px;
+}
+
+button {
+  border: 1px solid #fff;
+  border-radius: 3px;
+  padding: 11px 18px;
+  background: #fff;
+  color: #0a0a0a;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #e8e8e8;
+}
+
+.feature-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.feature-list li { margin-bottom: 8px; }
+.feature-list strong { color: #f2f2f2; }

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SoundCloud QoL</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">QoL</p>
+      <h1>SoundCloud</h1>
+    </header>
+
+    <dl class="stats">
+      <div>
+        <dt>Timer</dt>
+        <dd id="timer-status">Off</dd>
+      </div>
+      <div>
+        <dt>Discord</dt>
+        <dd id="discord-status">…</dd>
+      </div>
+    </dl>
+
+    <section class="recent">
+      <h2>Recent</h2>
+      <ul id="recent-list">
+        <li class="empty">Nothing yet</li>
+      </ul>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="reconnect">Reconnect Discord</button>
+      <button type="button" id="options" class="ghost">Settings</button>
+    </div>
+
+    <p class="hint">L loop · M mute · C copy · <kbd>?</kbd> help</p>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

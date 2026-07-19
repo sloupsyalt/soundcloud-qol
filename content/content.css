@@ -1,0 +1,348 @@
+:root {
+  --scqol-bg: #0a0a0a;
+  --scqol-panel: #111;
+  --scqol-elev: #171717;
+  --scqol-ink: #f2f2f2;
+  --scqol-muted: #8a8a8a;
+  --scqol-line: #2a2a2a;
+  --scqol-line-strong: #3a3a3a;
+  --scqol-font: "Interstate", "Lucida Grande", "Helvetica Neue", Arial, sans-serif;
+}
+
+.scqol-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: 8px;
+  padding: 2px;
+  border: 1px solid var(--scqol-line);
+  border-radius: 4px;
+  background: #0f0f0f;
+}
+
+.scqol-timer-btn,
+.scqol-speed-btn,
+.scqol-focus-btn,
+.scqol-loop-btn,
+.scqol-mute-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #7a7a7a;
+  cursor: pointer;
+  font-family: var(--scqol-font);
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.scqol-timer-btn svg,
+.scqol-focus-btn svg,
+.scqol-loop-btn svg,
+.scqol-mute-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.scqol-timer-btn:hover,
+.scqol-speed-btn:hover,
+.scqol-focus-btn:hover,
+.scqol-loop-btn:hover,
+.scqol-mute-btn:hover {
+  color: #fff;
+  background: #1c1c1c;
+}
+
+.scqol-timer-btn.is-active,
+.scqol-speed-btn.is-active,
+.scqol-focus-btn.is-active,
+.scqol-loop-btn.is-active,
+.scqol-mute-btn.is-active {
+  color: #0a0a0a;
+  background: #fff;
+}
+
+.scqol-btn-label {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.scqol-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 88px;
+  background: rgba(0, 0, 0, 0.62);
+  animation: scqol-fade 0.15s ease;
+}
+
+.scqol-panel {
+  width: min(400px, 100%);
+  max-height: min(78vh, 560px);
+  overflow: auto;
+  border: 1px solid var(--scqol-line-strong);
+  border-radius: 8px;
+  background: var(--scqol-panel);
+  color: var(--scqol-ink);
+  font-family: var(--scqol-font);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  animation: scqol-sheet 0.2s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.scqol-grabber {
+  width: 36px;
+  height: 3px;
+  margin: 10px auto 0;
+  border-radius: 2px;
+  background: #3a3a3a;
+}
+
+.scqol-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--scqol-line);
+}
+
+.scqol-panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.scqol-panel-head p {
+  margin: 4px 0 0;
+  color: var(--scqol-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.scqol-x {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--scqol-line);
+  border-radius: 3px;
+  background: var(--scqol-elev);
+  color: #aaa;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.scqol-x:hover {
+  color: #fff;
+  border-color: #555;
+}
+
+.scqol-panel-body {
+  padding: 14px 18px 18px;
+}
+
+.scqol-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.scqol-grid button,
+.scqol-actions button,
+.scqol-custom button {
+  border: 1px solid var(--scqol-line);
+  border-radius: 4px;
+  padding: 11px 8px;
+  background: var(--scqol-elev);
+  color: var(--scqol-ink);
+  font-family: var(--scqol-font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.scqol-grid button:hover,
+.scqol-actions button:hover,
+.scqol-custom button:hover {
+  border-color: #555;
+  background: #1f1f1f;
+}
+
+.scqol-grid button.primary,
+.scqol-custom button.primary {
+  border-color: #fff;
+  background: #fff;
+  color: #0a0a0a;
+}
+
+.scqol-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.scqol-actions:last-child {
+  margin-bottom: 0;
+}
+
+.scqol-actions button {
+  flex: 1;
+}
+
+.scqol-actions .ghost {
+  color: var(--scqol-muted);
+}
+
+.scqol-actions .danger {
+  border-color: #444;
+  color: #ddd;
+}
+
+.scqol-custom {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.scqol-custom input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--scqol-line);
+  border-radius: 4px;
+  padding: 11px 12px;
+  background: #0c0c0c;
+  color: #fff;
+  font-family: var(--scqol-font);
+  font-size: 13px;
+  outline: none;
+}
+
+.scqol-custom input:focus {
+  border-color: #888;
+}
+
+.scqol-custom button {
+  flex: none;
+  min-width: 64px;
+}
+
+.scqol-divider {
+  height: 1px;
+  margin: 4px 0 12px;
+  background: var(--scqol-line);
+}
+
+.scqol-shortcuts {
+  display: grid;
+  gap: 0;
+  margin: 0 0 14px;
+  border: 1px solid var(--scqol-line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.scqol-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--scqol-elev);
+}
+
+.scqol-shortcut + .scqol-shortcut {
+  border-top: 1px solid var(--scqol-line);
+}
+
+.scqol-shortcut span {
+  color: var(--scqol-muted);
+  font-size: 12px;
+}
+
+.scqol-shortcut kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 3px 7px;
+  border: 1px solid var(--scqol-line-strong);
+  border-radius: 3px;
+  background: #0c0c0c;
+  color: #fff;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.scqol-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  z-index: 1000000;
+  transform: translateX(-50%) translateY(6px);
+  padding: 10px 14px;
+  border: 1px solid var(--scqol-line-strong);
+  border-radius: 4px;
+  background: #0a0a0a;
+  color: #fff;
+  font-family: var(--scqol-font);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.scqol-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@keyframes scqol-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scqol-sheet {
+  from {
+    opacity: 0.5;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html.scqol-focus .l-sidebar-right,
+html.scqol-focus .sidebarContent,
+html.scqol-focus .listenNetwork,
+html.scqol-focus .suggestedUsers,
+html.scqol-focus .suggestedTracks,
+html.scqol-focus .sc-classic .l-footer,
+html.scqol-focus .playControls__castControl,
+html.scqol-focus .header__navMenu > li:has(a[href*="go"]),
+html.scqol-focus .creatorSubscriptionsButton,
+html.scqol-focus .header__upsellWrapper {
+  display: none !important;
+}
+
+html.scqol-focus .l-main {
+  width: 100% !important;
+  max-width: none !important;
+}

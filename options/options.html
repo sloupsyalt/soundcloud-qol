@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SoundCloud QoL Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Settings</p>
+        <h1>SoundCloud QoL</h1>
+        <p class="lede">Black & white controls for timer, speed, focus, loop, mute, and Discord presence.</p>
+      </header>
+
+      <section>
+        <h2>Language</h2>
+        <label class="field">
+          <span>UI language</span>
+          <select id="locale">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <h2>Discord</h2>
+        <p class="note">
+          Run <code>bridge/install-autostart.command</code> once. Art asset key:
+          <code>soundcloud</code>. Presence buttons are only visible to others.
+        </p>
+        <ol class="steps">
+          <li>Install autostart</li>
+          <li>Open Discord desktop</li>
+          <li>Play a track</li>
+        </ol>
+        <label class="toggle">
+          <input type="checkbox" id="discordEnabled" />
+          <span>Show listening status on Discord</span>
+        </label>
+        <label class="field">
+          <span>Application ID override</span>
+          <input type="text" id="discordClientId" placeholder="Optional — bridge/config.json default" autocomplete="off" />
+        </label>
+        <p class="status" id="status"></p>
+        <button type="button" id="save">Save</button>
+      </section>
+
+      <section>
+        <h2>Features</h2>
+        <ul class="feature-list">
+          <li><strong>Timer</strong> — presets / custom / stop after track</li>
+          <li><strong>Speed</strong> — 0.75x–2x</li>
+          <li><strong>Loop</strong> — repeat current track</li>
+          <li><strong>Mute</strong> — toggle audio</li>
+          <li><strong>Focus</strong> — quieter page</li>
+          <li><strong>Copy</strong> — C track · Shift+C with timestamp</li>
+          <li><strong>Recent</strong> — last tracks in the popup</li>
+        </ul>
+      </section>
+    </main>
+    <script src="options.js" type="module"></script>
+  </body>
+</html>
