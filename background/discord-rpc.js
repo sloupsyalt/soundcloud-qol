@@ -1,7 +1,6 @@
 const BRIDGE_BASE = "http://127.0.0.1:19234";
 
 let clientId = "";
-let bridgeToken = "";
 let lastActivity = null;
 let lastSentSig = "";
 let status = { connected: false, port: 19234, error: null };
@@ -12,42 +11,17 @@ function getStatus() {
   return { ...status };
 }
 
-function setBridgeToken(token) {
-  bridgeToken = String(token || "").trim();
-}
-
-function authHeaders() {
-  const headers = { "Content-Type": "application/json" };
-  if (bridgeToken) {
-    headers.Authorization = `Bearer ${bridgeToken}`;
-  }
-  return headers;
-}
-
-function missingTokenError() {
-  return "Bridge token missing — paste it from bridge/config.json into Settings";
-}
-
 async function bridgeFetch(path, payload) {
-  if (!bridgeToken) {
-    status = { connected: false, port: 19234, error: missingTokenError() };
-    bridgeReady = false;
-    throw new Error(missingTokenError());
-  }
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const res = await fetch(`${BRIDGE_BASE}${path}`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload || {}),
       signal: controller.signal,
     });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) {
-      throw new Error("Bridge rejected token — check Settings");
-    }
     if (!res.ok) {
       throw new Error(data.error || `Bridge HTTP ${res.status}`);
     }
@@ -56,10 +30,6 @@ async function bridgeFetch(path, payload) {
     return data;
   } catch (err) {
     bridgeReady = false;
-    if (String(err?.message || "").includes("token") || String(err?.message || "").includes("Settings")) {
-      status = { connected: false, port: 19234, error: err.message };
-      throw err;
-    }
     const message =
       err?.name === "AbortError"
         ? "Bridge timeout — is the bridge running?"
@@ -72,33 +42,19 @@ async function bridgeFetch(path, payload) {
 }
 
 async function ping() {
-  if (!bridgeToken) {
-    bridgeReady = false;
-    status = { connected: false, port: 19234, error: missingTokenError() };
-    return null;
-  }
   try {
-    const res = await fetch(`${BRIDGE_BASE}/health`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${bridgeToken}` },
-    });
+    const res = await fetch(`${BRIDGE_BASE}/health`, { method: "GET" });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) {
-      throw new Error("Bridge rejected token — check Settings");
-    }
     if (!res.ok) throw new Error("bad health");
     status = { connected: true, port: 19234, error: null };
     bridgeReady = true;
     return data;
-  } catch (err) {
+  } catch {
     bridgeReady = false;
-    const msg = String(err?.message || "");
     status = {
       connected: false,
       port: 19234,
-      error: msg.includes("token") || msg.includes("Settings")
-        ? msg
-        : "Bridge not running — start bridge/start.command",
+      error: "Bridge not running — start bridge/start.command",
     };
     return null;
   }
@@ -170,20 +126,17 @@ async function clearActivity() {
   }
 }
 
-async function connect(id, token) {
-  if (token != null) setBridgeToken(token);
+async function connect(id) {
   const nextId = String(id || "").trim();
   if (nextId) clientId = nextId;
 
-  const health = await ping();
+  await ping();
   if (!status.connected) return status;
 
   if (trackIsPlaying(lastActivity)) {
     lastSentSig = "";
     await setActivity(lastActivity);
   }
-  // health no longer returns clientId — keep local/override only
-  void health;
   return status;
 }
 
@@ -194,25 +147,12 @@ async function disconnect() {
 }
 
 async function reconnect() {
-  if (!bridgeToken) {
-    status = { connected: false, port: 19234, error: missingTokenError() };
-    return status;
-  }
   try {
     await bridgeFetch("/reconnect", {});
-    return connect(clientId, bridgeToken);
+    return connect(clientId);
   } catch {
     return status;
   }
 }
 
-export {
-  connect,
-  disconnect,
-  setActivity,
-  clearActivity,
-  getStatus,
-  ping,
-  setBridgeToken,
-  reconnect,
-};
+export { connect, disconnect, setActivity, clearActivity, getStatus, ping, reconnect };

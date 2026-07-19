@@ -42,23 +42,19 @@ SoundCloud tab → content script → extension service worker
 The bridge:
 
 - Listens only on `127.0.0.1:19234`
-- Requires a **per-install auth token** on every request (`Authorization: Bearer …`)
-- Allows CORS only for `chrome-extension://…` origins (not `*`)
+- Accepts write requests only from `chrome-extension://…` origins (not web pages)
 - Rejects bodies larger than 64 KB
 - Exposes a minimal `/health` payload (`ok`, `rpcReady`) — no client ID or track details
 - Validates / truncates every track field before building presence
 
-`bridge/config.json` is created locally (gitignored) and holds `authToken` + Discord app settings. Paste the token into **extension Settings → Bridge auth token** (stored in `chrome.storage.local` only).
+No bridge token to paste. Start the bridge, enable Discord in Settings, play a track.
+
+`bridge/config.json` is created locally (gitignored) for Discord app settings (`clientId`, art asset keys).
 
 ### macOS (autostart)
 
 1. Double-click `bridge/install-autostart.command`
-2. Copy the printed token into extension Settings
-3. Open Discord desktop and play a track
-
-- Logs: `~/Library/Logs/soundcloud-qol-bridge.log`
-- Uninstall: `bridge/uninstall-autostart.command`
-- Manual run: `bridge/start.command`
+2. Open Discord desktop and play a track
 
 ### Windows / Linux (manual)
 
@@ -67,7 +63,6 @@ Bridge autostart scripts are **macOS-only** today. On Windows or Linux:
 1. Install [Node.js](https://nodejs.org/)
 2. In `bridge/`: `npm install` then `npm start` (or `node server.js`)
 3. Keep that process running while you use Discord presence
-4. Copy `authToken` from `bridge/config.json` into extension Settings
 
 Upload a Rich Presence art asset named `soundcloud` in the Discord Developer Portal. Presence buttons are only visible to other users, not on your own profile.
 
@@ -91,7 +86,6 @@ Upload a Rich Presence art asset named `soundcloud` in the Discord Developer Por
 - Runs only on SoundCloud pages
 - Discord traffic stays on your machine (extension → local bridge → Discord IPC)
 - No analytics, no accounts, no remote servers of ours
-- Bridge auth token never syncs via Chrome sync
 
 ## License
 

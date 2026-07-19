@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 /**
  * Local bridge: Chrome extension ↔ Discord desktop (IPC).
- * Binds to 127.0.0.1 only. Requires a per-install auth token on every request.
+ * Binds to 127.0.0.1 only. Mutating routes require a chrome-extension:// Origin.
  */
-const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
@@ -41,32 +40,24 @@ function loadConfigRaw() {
 }
 
 function saveConfig(config) {
-  fs.writeFileSync(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  const clean = { ...config };
+  delete clean.authToken;
+  fs.writeFileSync(CONFIG_PATH, `${JSON.stringify(clean, null, 2)}\n`, { mode: 0o600 });
   try {
     fs.chmodSync(CONFIG_PATH, 0o600);
   } catch {
     // ignore (Windows)
   }
-  configCache = config;
+  configCache = clean;
 }
 
 function ensureConfig() {
-  if (configCache?.authToken) return configCache;
+  if (configCache) return configCache;
 
   const existing = loadConfigRaw();
   const base = { ...loadExample(), ...(existing || {}) };
-  let generated = false;
-
-  if (!base.authToken || typeof base.authToken !== "string" || base.authToken.length < 32) {
-    base.authToken = crypto.randomBytes(32).toString("hex");
-    generated = true;
-  }
-
+  delete base.authToken;
   saveConfig(base);
-  if (generated || !existing) {
-    console.log("[bridge] Auth token saved to config.json (paste into extension Settings).");
-    console.log(`[bridge] Token: ${base.authToken}`);
-  }
   return base;
 }
 
@@ -86,26 +77,6 @@ function clampNumber(value, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
-function safeEqual(a, b) {
-  const ba = Buffer.from(String(a || ""), "utf8");
-  const bb = Buffer.from(String(b || ""), "utf8");
-  if (ba.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ba, bb);
-}
-
-function getRequestToken(req) {
-  const auth = String(req.headers.authorization || "");
-  const bearer = /^Bearer\s+(.+)$/i.exec(auth);
-  if (bearer) return bearer[1].trim();
-  return String(req.headers["x-soundcloud-qol-token"] || "").trim();
-}
-
-function isAuthorized(req) {
-  const expected = loadConfig().authToken;
-  const got = getRequestToken(req);
-  return Boolean(expected && got && safeEqual(got, expected));
-}
-
 /** @returns {string|null|false} allowed Origin, null if none, false if forbidden */
 function resolveCorsOrigin(req) {
   const origin = req.headers.origin;
@@ -114,11 +85,18 @@ function resolveCorsOrigin(req) {
   return false;
 }
 
+function requireExtensionOrigin(req, res) {
+  const origin = resolveCorsOrigin(req);
+  if (typeof origin === "string") return true;
+  sendJson(res, 403, { ok: false, error: "Extension origin required" }, req);
+  return false;
+}
+
 function sendJson(res, statusCode, data, req) {
   const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-SoundCloud-QoL-Token",
+    "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "600",
   };
   const origin = resolveCorsOrigin(req);
@@ -366,17 +344,8 @@ async function clearActivity() {
 }
 
 function requireLocalBrowserOrTool(req, res) {
-  const origin = resolveCorsOrigin(req);
-  if (origin === false) {
+  if (resolveCorsOrigin(req) === false) {
     sendJson(res, 403, { ok: false, error: "Origin not allowed" }, req);
-    return false;
-  }
-  return true;
-}
-
-function requireAuth(req, res) {
-  if (!isAuthorized(req)) {
-    sendJson(res, 401, { ok: false, error: "Unauthorized" }, req);
     return false;
   }
   return true;
@@ -386,7 +355,6 @@ const server = http.createServer(async (req, res) => {
   if (!requireLocalBrowserOrTool(req, res)) return;
 
   if (req.method === "OPTIONS") {
-    // Preflight: only for allowed extension origins
     if (resolveCorsOrigin(req) === false) {
       sendJson(res, 403, { ok: false, error: "Origin not allowed" }, req);
       return;
@@ -397,7 +365,6 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === "GET" && (req.url === "/" || req.url?.startsWith("/health"))) {
-      if (!requireAuth(req, res)) return;
       sendJson(
         res,
         200,
@@ -412,7 +379,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && req.url === "/activity") {
-      if (!requireAuth(req, res)) return;
+      if (!requireExtensionOrigin(req, res)) return;
       requestCount += 1;
       const body = await readBody(req);
       console.log(
@@ -427,7 +394,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && req.url === "/reconnect") {
-      if (!requireAuth(req, res)) return;
+      if (!requireExtensionOrigin(req, res)) return;
       console.log("[bridge] reconnect requested");
       if (rpc) {
         try {
@@ -451,7 +418,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && req.url === "/clear") {
-      if (!requireAuth(req, res)) return;
+      if (!requireExtensionOrigin(req, res)) return;
       requestCount += 1;
       console.log(`[bridge] POST /clear #${requestCount}`);
       const result = await clearActivity();
@@ -470,7 +437,7 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   ensureConfig();
   server.listen(PORT, HOST, () => {
-    console.log(`[bridge] HTTP http://${HOST}:${PORT} (auth required)`);
+    console.log(`[bridge] HTTP http://${HOST}:${PORT} (extension origin required for writes)`);
     console.log("[bridge] Keep Discord desktop open while using presence.");
   });
 

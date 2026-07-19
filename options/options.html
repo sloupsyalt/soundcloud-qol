@@ -87,26 +87,17 @@
         <section id="discord" class="card">
           <h2>Discord Rich Presence</h2>
           <p class="hint">
-            Run the local bridge, then paste <code>authToken</code> from <code>bridge/config.json</code>.
-            Token stays on this device only.
+            Run the local bridge (<code>bridge/install-autostart.command</code> on macOS, or
+            <code>npm start</code> in <code>bridge/</code>). No token to paste — the extension
+            talks to localhost automatically.
           </p>
           <label class="toggle">
             <input type="checkbox" id="discordEnabled" />
             <span>Show listening status on Discord <em class="badge sync">Synced</em></span>
           </label>
           <label class="field">
-            <span>Bridge auth token <em class="badge local">This device</em></span>
-            <input
-              type="password"
-              id="bridgeToken"
-              placeholder="From bridge/config.json → authToken"
-              autocomplete="off"
-              spellcheck="false"
-            />
-          </label>
-          <label class="field">
             <span>Application ID override <em class="badge local">This device</em></span>
-            <input type="text" id="discordClientId" placeholder="Optional" autocomplete="off" />
+            <input type="text" id="discordClientId" placeholder="Optional — uses bridge/config.json" autocomplete="off" />
           </label>
           <div class="rpc-legacy settings-rpc" aria-label="Discord connection status">
             <dl class="stats">

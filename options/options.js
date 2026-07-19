@@ -3,7 +3,6 @@ const els = {
   defaultPlaybackRate: document.getElementById("defaultPlaybackRate"),
   timerEndBehavior: document.getElementById("timerEndBehavior"),
   discordEnabled: document.getElementById("discordEnabled"),
-  bridgeToken: document.getElementById("bridgeToken"),
   discordClientId: document.getElementById("discordClientId"),
   density: document.getElementById("density"),
   reducedMotion: document.getElementById("reducedMotion"),
@@ -15,7 +14,6 @@ const els = {
 
 function discordLabel(discord, settings) {
   if (!settings?.discordEnabled) return "Disabled";
-  if (!settings?.hasBridgeToken && !els.bridgeToken.value.trim()) return "Needs bridge token";
   if (discord?.connected) return discord.error ? `Bridge: ${discord.error}` : "Connected";
   return discord?.error || "Bridge not running";
 }
@@ -35,7 +33,6 @@ function setActiveNav() {
 
 async function load() {
   const local = await chrome.storage.local.get({
-    bridgeToken: "",
     discordClientId: "",
     discordEnabled: null,
   });
@@ -46,29 +43,24 @@ async function load() {
   els.defaultPlaybackRate.value = String(s.defaultPlaybackRate || 1);
   els.timerEndBehavior.value = s.timerEndBehavior || "pause";
   els.discordEnabled.checked = Boolean(s.discordEnabled);
-  els.bridgeToken.value = local.bridgeToken || "";
   els.discordClientId.value = local.discordClientId || s.discordClientId || "";
   els.density.value = s.density === "comfortable" ? "comfortable" : "compact";
   els.reducedMotion.checked = Boolean(s.reducedMotion);
   els.recentHistoryEnabled.checked = s.recentHistoryEnabled !== false;
 
   document.getElementById("about-version").textContent = `v${chrome.runtime.getManifest().version}`;
-  els.discordStatus.textContent = discordLabel(res?.discord, {
-    ...s,
-    hasBridgeToken: Boolean(els.bridgeToken.value.trim()),
-  });
+  els.discordStatus.textContent = discordLabel(res?.discord, s);
 
-  if (!els.bridgeToken.value.trim()) {
-    els.status.textContent = "Paste the bridge authToken from bridge/config.json.";
-  } else if (res?.discord?.connected) {
+  if (res?.discord?.connected) {
     els.status.textContent = "Bridge connected.";
+  } else if (!els.discordEnabled.checked) {
+    els.status.textContent = "Discord presence is disabled.";
   } else {
     els.status.textContent = res?.discord?.error || "Bridge not running.";
   }
 }
 
 document.getElementById("save").addEventListener("click", async () => {
-  const bridgeToken = els.bridgeToken.value.trim();
   const syncPayload = {
     locale: els.locale.value === "fr" ? "fr" : "en",
     defaultPlaybackRate: Number(els.defaultPlaybackRate.value) || 1,
@@ -82,9 +74,9 @@ document.getElementById("save").addEventListener("click", async () => {
   await chrome.storage.local.set({
     discordEnabled: syncPayload.discordEnabled,
     discordClientId: els.discordClientId.value.trim(),
-    bridgeToken,
     playbackRate: syncPayload.defaultPlaybackRate,
   });
+  await chrome.storage.local.remove("bridgeToken");
   await chrome.storage.sync.set({
     ...syncPayload,
     discordClientId: "",
@@ -94,7 +86,6 @@ document.getElementById("save").addEventListener("click", async () => {
   const res = await chrome.runtime.sendMessage({ type: "DISCORD_RECONNECT" });
   els.discordStatus.textContent = discordLabel(res?.discord, {
     discordEnabled: syncPayload.discordEnabled,
-    hasBridgeToken: Boolean(bridgeToken),
   });
 
   if (res?.discord?.connected) {
@@ -103,9 +94,6 @@ document.getElementById("save").addEventListener("click", async () => {
   } else if (!syncPayload.discordEnabled) {
     els.saveStatus.textContent = "Saved.";
     els.status.textContent = "Discord presence is disabled.";
-  } else if (!bridgeToken) {
-    els.saveStatus.textContent = "Saved — token still missing.";
-    els.status.textContent = "Paste the bridge authToken.";
   } else {
     els.saveStatus.textContent = "Saved.";
     els.status.textContent = res?.discord?.error || "Bridge not reachable.";
@@ -116,7 +104,6 @@ document.getElementById("reconnect").addEventListener("click", async () => {
   const res = await chrome.runtime.sendMessage({ type: "DISCORD_RECONNECT" });
   els.discordStatus.textContent = discordLabel(res?.discord, {
     discordEnabled: els.discordEnabled.checked,
-    hasBridgeToken: Boolean(els.bridgeToken.value.trim()),
   });
   els.status.textContent = res?.discord?.connected
     ? "Bridge connected."

@@ -5,7 +5,6 @@ import {
   getStatus,
   reconnect,
   setActivity,
-  setBridgeToken,
 } from "./discord-rpc.js";
 
 const SYNC_DEFAULTS = {
@@ -31,7 +30,6 @@ const LOCAL_DEFAULTS = {
   sleepTimerDurationMs: null,
   nowPlaying: null,
   recentTracks: [],
-  bridgeToken: "",
 };
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -73,7 +71,6 @@ async function getDiscordSettings() {
   const local = await chrome.storage.local.get({
     discordEnabled: null,
     discordClientId: null,
-    bridgeToken: "",
   });
   const sync = await chrome.storage.sync.get(SYNC_DEFAULTS);
   const enabled =
@@ -83,19 +80,14 @@ async function getDiscordSettings() {
       ? local.discordClientId
       : sync.discordClientId || ""
   ).trim();
-  const bridgeToken = String(local.bridgeToken || "").trim();
-  setBridgeToken(bridgeToken);
   return {
     enabled,
     clientId,
-    bridgeToken,
     locale: sync.locale === "fr" ? "fr" : "en",
     raw: {
       ...sync,
       discordEnabled: enabled,
       discordClientId: clientId,
-      bridgeToken,
-      hasBridgeToken: Boolean(bridgeToken),
     },
   };
 }
@@ -105,12 +97,12 @@ async function getLocalPrefs() {
 }
 
 async function syncDiscordConnection() {
-  const { enabled, clientId, bridgeToken } = await getDiscordSettings();
+  const { enabled, clientId } = await getDiscordSettings();
   if (!enabled) {
     await disconnect();
     return getStatus();
   }
-  return connect(clientId, bridgeToken);
+  return connect(clientId);
 }
 
 async function setSleepTimer(endAt, meta = {}) {
@@ -159,7 +151,7 @@ async function sendToActiveSoundCloud(message) {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync" && area !== "local") return;
-  if (changes.discordEnabled || changes.discordClientId || changes.bridgeToken) {
+  if (changes.discordEnabled || changes.discordClientId) {
     syncDiscordConnection();
   }
   if (
@@ -196,9 +188,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               }
             : null,
         });
-        const { enabled, clientId, bridgeToken } = await getDiscordSettings();
+        const { enabled, clientId } = await getDiscordSettings();
         if (enabled) {
-          await connect(clientId, bridgeToken);
+          await connect(clientId);
           const ok = await setActivity(message.track);
           sendResponse({ ok, discord: getStatus(), track: track?.title || null });
         } else {
@@ -221,13 +213,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       case "DISCORD_RECONNECT": {
         await reinjectContentScripts();
-        const { enabled, clientId, bridgeToken } = await getDiscordSettings();
+        const { enabled, clientId } = await getDiscordSettings();
         let status;
         if (!enabled) {
           status = await disconnect();
         } else {
           status = await reconnect();
-          if (!status.connected) status = await connect(clientId, bridgeToken);
+          if (!status.connected) status = await connect(clientId);
         }
         sendResponse({ ok: true, discord: status });
         break;
@@ -236,7 +228,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const settings = (await getDiscordSettings()).raw;
         const local = await getLocalPrefs();
         if (settings.discordEnabled) {
-          await connect(String(settings.discordClientId || "").trim(), settings.bridgeToken);
+          await connect(String(settings.discordClientId || "").trim());
         }
         sendResponse({
           ok: true,
@@ -252,8 +244,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       case "GET_POPUP_STATE": {
         const settings = (await getDiscordSettings()).raw;
         const local = await getLocalPrefs();
-        if (settings.discordEnabled && settings.hasBridgeToken) {
-          await connect(String(settings.discordClientId || "").trim(), settings.bridgeToken);
+        if (settings.discordEnabled) {
+          await connect(String(settings.discordClientId || "").trim());
         }
         sendResponse({
           ok: true,

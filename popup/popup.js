@@ -38,7 +38,6 @@ function relativeTime(at) {
 /** Preserved Discord RPC status labels (unchanged behavior) */
 function discordLabel(discord, settings) {
   if (!settings?.discordEnabled) return "Disabled";
-  if (!settings?.hasBridgeToken && !settings?.bridgeToken) return "Needs bridge token";
   if (discord?.connected) return discord.error ? `Bridge: ${discord.error}` : "Connected";
   return discord?.error || "Bridge not running";
 }
