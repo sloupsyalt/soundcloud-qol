@@ -3,7 +3,9 @@ import {
   connect,
   disconnect,
   getStatus,
+  reconnect,
   setActivity,
+  setBridgeToken,
 } from "./discord-rpc.js";
 
 const DEFAULTS = {
@@ -51,6 +53,7 @@ async function getDiscordSettings() {
   const local = await chrome.storage.local.get({
     discordEnabled: null,
     discordClientId: null,
+    bridgeToken: "",
   });
   const sync = await chrome.storage.sync.get(DEFAULTS);
   const enabled =
@@ -60,27 +63,35 @@ async function getDiscordSettings() {
       ? local.discordClientId
       : sync.discordClientId || ""
   ).trim();
+  const bridgeToken = String(local.bridgeToken || "").trim();
+  setBridgeToken(bridgeToken);
   return {
     enabled,
     clientId,
+    bridgeToken,
     locale: sync.locale === "fr" ? "fr" : "en",
-    raw: { ...sync, discordEnabled: enabled, discordClientId: clientId },
+    raw: {
+      ...sync,
+      discordEnabled: enabled,
+      discordClientId: clientId,
+      bridgeToken,
+      hasBridgeToken: Boolean(bridgeToken),
+    },
   };
 }
 
 async function syncDiscordConnection() {
-  const { enabled, clientId } = await getDiscordSettings();
+  const { enabled, clientId, bridgeToken } = await getDiscordSettings();
   if (!enabled) {
     await disconnect();
     return getStatus();
   }
-  // clientId optional — bridge/config.json can supply it
-  return connect(clientId);
+  return connect(clientId, bridgeToken);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync" && area !== "local") return;
-  if (changes.discordEnabled || changes.discordClientId) {
+  if (changes.discordEnabled || changes.discordClientId || changes.bridgeToken) {
     syncDiscordConnection();
   }
   if (area === "sync" && (changes.locale || changes.discordEnabled || changes.discordClientId)) {
@@ -94,9 +105,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     switch (message?.type) {
       case "TRACK_UPDATE": {
-        const { enabled, clientId } = await getDiscordSettings();
+        const { enabled, clientId, bridgeToken } = await getDiscordSettings();
         if (enabled) {
-          await connect(clientId);
+          await connect(clientId, bridgeToken);
           const ok = await setActivity(message.track);
           sendResponse({ ok, discord: getStatus(), track: message.track?.title || null });
         } else {
@@ -118,15 +129,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       case "DISCORD_RECONNECT": {
         await reinjectContentScripts();
-        const status = await syncDiscordConnection();
+        const { enabled, clientId, bridgeToken } = await getDiscordSettings();
+        let status;
+        if (!enabled) {
+          status = await disconnect();
+        } else {
+          status = await reconnect();
+          if (!status.connected) status = await connect(clientId, bridgeToken);
+        }
         sendResponse({ ok: true, discord: status });
         break;
       }
       case "GET_SETTINGS": {
         const settings = (await getDiscordSettings()).raw;
         if (settings.discordEnabled) {
-          await connect(String(settings.discordClientId || "").trim());
+          await connect(String(settings.discordClientId || "").trim(), settings.bridgeToken);
         }
+        // Never echo the raw token to popup/options responses when not needed —
+        // options reads it from storage directly; still include for the options page form.
         sendResponse({ ok: true, settings, discord: getStatus() });
         break;
       }

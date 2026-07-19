@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "node test-sanitize.js",
     "postinstall": "node -e \"console.log('\\nBridge ready. Run: npm start\\n')\""
   },
   "dependencies": {

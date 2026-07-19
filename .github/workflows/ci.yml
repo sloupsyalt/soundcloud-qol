@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install bridge deps
+        run: npm ci
+        working-directory: bridge
+      - name: Bridge sanitize tests
+        run: npm test
+        working-directory: bridge
+      - name: Syntax check extension scripts
+        run: |
+          node --check content/content.js
+          node --check popup/popup.js
+          node --check options/options.js
+          node --check bridge/server.js
+          node --check bridge/test-sanitize.js
+      - name: Validate manifest.json
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"

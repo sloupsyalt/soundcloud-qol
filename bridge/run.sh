@@ -12,6 +12,12 @@ if [ -z "$NODE_BIN" ]; then
   exit 1
 fi
 
+if [ ! -f "$ROOT/config.json" ] && [ -f "$ROOT/config.example.json" ]; then
+  echo "[bridge] creating config.json from config.example.json"
+  cp "$ROOT/config.example.json" "$ROOT/config.json"
+  chmod 600 "$ROOT/config.json" 2>/dev/null || true
+fi
+
 if [ ! -d "$ROOT/node_modules" ]; then
   echo "[bridge] installing dependencies…"
   npm install --prefix "$ROOT"
@@ -19,7 +25,6 @@ fi
 
 # If something else already owns the port, exit quietly (LaunchAgent will retry)
 if lsof -nP -iTCP:19234 -sTCP:LISTEN >/dev/null 2>&1; then
-  # Prefer our own process; if foreign, still exit so we don't crash-loop hard
   echo "[bridge] port 19234 already in use — assuming bridge is up"
   exit 0
 fi

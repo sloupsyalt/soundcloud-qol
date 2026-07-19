@@ -28,17 +28,28 @@
       <section>
         <h2>Discord</h2>
         <p class="note">
-          Run <code>bridge/install-autostart.command</code> once. Art asset key:
-          <code>soundcloud</code>. Presence buttons are only visible to others.
+          Run the bridge once, then paste the <code>authToken</code> from
+          <code>bridge/config.json</code> below. Art asset key: <code>soundcloud</code>.
+          Presence buttons are only visible to others.
         </p>
         <ol class="steps">
-          <li>Install autostart</li>
-          <li>Open Discord desktop</li>
-          <li>Play a track</li>
+          <li>Install / start the bridge</li>
+          <li>Paste the bridge auth token</li>
+          <li>Open Discord desktop and play a track</li>
         </ol>
         <label class="toggle">
           <input type="checkbox" id="discordEnabled" />
           <span>Show listening status on Discord</span>
+        </label>
+        <label class="field">
+          <span>Bridge auth token</span>
+          <input
+            type="password"
+            id="bridgeToken"
+            placeholder="From bridge/config.json → authToken"
+            autocomplete="off"
+            spellcheck="false"
+          />
         </label>
         <label class="field">
           <span>Application ID override</span>

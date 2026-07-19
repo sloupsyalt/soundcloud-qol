@@ -8,9 +8,7 @@ function formatRemaining(endAt) {
 
 function discordLabel(discord, settings) {
   if (!settings?.discordEnabled) return "Disabled";
-  if (!settings?.discordClientId && !discord?.connected) {
-    return discord?.error || "Bridge not running";
-  }
+  if (!settings?.hasBridgeToken && !settings?.bridgeToken) return "Needs bridge token";
   if (discord?.connected) return discord.error ? `Bridge: ${discord.error}` : "Connected";
   return discord?.error || "Bridge not running";
 }

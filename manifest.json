@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SoundCloud QoL",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Black & white QoL for SoundCloud: sleep timer, speed, loop, mute, focus, shortcuts, recent tracks, Discord presence.",
   "permissions": ["storage", "alarms", "scripting", "tabs"],
   "host_permissions": [

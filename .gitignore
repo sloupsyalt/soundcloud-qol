@@ -3,3 +3,5 @@
 *.pem
 node_modules/
 bridge/node_modules/
+# Local secrets (authToken). Use config.example.json as the template.
+bridge/config.json

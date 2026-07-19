@@ -22,6 +22,11 @@ if [ -z "$NODE_BIN" ]; then
   exit 1
 fi
 
+if [ ! -f "$ROOT/config.json" ] && [ -f "$ROOT/config.example.json" ]; then
+  cp "$ROOT/config.example.json" "$ROOT/config.json"
+  chmod 600 "$ROOT/config.json" 2>/dev/null || true
+fi
+
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -61,13 +66,23 @@ launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || launchctl load "$PLIS
 launchctl enable "gui/$(id -u)/${LABEL}" 2>/dev/null || true
 launchctl kickstart -k "gui/$(id -u)/${LABEL}" 2>/dev/null || true
 
-sleep 0.8
-if curl -sf "http://127.0.0.1:19234/health" >/dev/null; then
+sleep 1.5
+# Server generates authToken on first boot into config.json
+TOKEN="$("$NODE_BIN" -e "try{console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).authToken||'')}catch(e){console.log('')}" "$ROOT/config.json")"
+if [ -n "$TOKEN" ] && curl -sf -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:19234/health" >/dev/null; then
   echo "✓ Bridge autostart installed and running."
   echo "  Starts at login, restarts if it crashes."
   echo "  Logs: $LOG_OUT"
+  echo ""
+  echo "Paste this token into the extension Settings → Bridge auth token:"
+  echo "  $TOKEN"
 else
   echo "Autostart installed. Bridge may still be starting — check:"
   echo "  $LOG_ERR"
   echo "  $LOG_OUT"
+  if [ -n "$TOKEN" ]; then
+    echo ""
+    echo "When ready, paste this token into extension Settings:"
+    echo "  $TOKEN"
+  fi
 fi
